@@ -1,0 +1,85 @@
+### Run these top to bottom with the VS Code "REST Client" extension (humao.rest-client).
+@base = http://localhost:8080/api
+
+### 1. Onboard a chain with two properties (a standalone hotel is the same call with one property)
+# @name onboard
+POST {{base}}/owners
+Content-Type: application/json
+
+{
+  "name": "Coastal Stays",
+  "email": "ops@coastal.example",
+  "properties": [
+    {
+      "name": "Sea Breeze",
+      "type": "HOTEL",
+      "city": "Goa",
+      "locality": "Calangute",
+      "addressLine": "1 Beach Road",
+      "starRating": 4,
+      "amenities": ["WIFI", "POOL", "BREAKFAST"],
+      "cancellationPolicy": "FLEXIBLE",
+      "roomTypes": [
+        {"name": "Deluxe", "maxGuests": 2, "totalRooms": 1, "pricePerNight": 2000},
+        {"name": "Family Suite", "maxGuests": 4, "totalRooms": 2, "pricePerNight": 4500}
+      ]
+    },
+    {
+      "name": "Palm Villa",
+      "type": "VILLA",
+      "city": "Goa",
+      "locality": "Baga",
+      "starRating": 5,
+      "amenities": ["WIFI", "POOL", "PARKING"],
+      "cancellationPolicy": "NON_REFUNDABLE",
+      "roomTypes": [
+        {"name": "Whole Villa", "maxGuests": 6, "totalRooms": 1, "pricePerNight": 12000}
+      ]
+    }
+  ]
+}
+
+### 2. Search
+GET {{base}}/properties/search?city=Goa&checkIn=2027-01-10&checkOut=2027-01-12&guests=2&amenities=POOL&maxPrice=5000
+
+### 3. Book the Deluxe room
+# @name booking
+POST {{base}}/bookings
+Content-Type: application/json
+
+{
+  "propertyId": "{{onboard.response.body.$.properties[0].id}}",
+  "roomTypeId": "{{onboard.response.body.$.properties[0].roomTypes[0].id}}",
+  "guestName": "Guest One",
+  "checkIn": "2027-01-10",
+  "checkOut": "2027-01-12",
+  "guests": 2
+}
+
+### 4. Same room, overlapping dates -> 409
+POST {{base}}/bookings
+Content-Type: application/json
+
+{
+  "propertyId": "{{onboard.response.body.$.properties[0].id}}",
+  "roomTypeId": "{{onboard.response.body.$.properties[0].roomTypes[0].id}}",
+  "guestName": "Guest Two",
+  "checkIn": "2027-01-11",
+  "checkOut": "2027-01-13",
+  "guests": 1
+}
+
+### 5. Pay (send twice with the same key: same payment comes back, no second charge)
+POST {{base}}/bookings/{{booking.response.body.$.bookingId}}/payments
+Content-Type: application/json
+Idempotency-Key: pay-001
+
+{"method": "CARD", "details": {"cardNumber": "4111111111111111"}}
+
+### 6. Booking status
+GET {{base}}/bookings/{{booking.response.body.$.bookingId}}
+
+### 7. Cancel -> refund per policy, room is searchable again
+POST {{base}}/bookings/{{booking.response.body.$.bookingId}}/cancel
+
+### Declined payment example: use card 4000000000000002, UPI "fail@upi" or wallet "fail-wallet"

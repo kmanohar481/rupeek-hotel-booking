@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: hotel-booking
+
+booking:
+  # how long an unpaid booking holds its room
+  hold-duration: PT15M
+  expiry-check-interval-ms: 60000
+
+pricing:
+  # standard | weekend
+  strategy: standard
+  weekend-surcharge-percent: 20
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
